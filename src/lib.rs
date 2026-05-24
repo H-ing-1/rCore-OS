@@ -2172,7 +2172,7 @@ mod tests {
             let code = ControlHandler::encode_rate(rate)
                 .unwrap_or_else(|_| panic!("encode_rate({}) 失败", rate));
             let decoded = ControlHandler::decode_rate(code)
-                .unwrap_or_else(|_| panic!("decode_rate({}) 失败", code));
+                .unwrap_or_else(|| panic!("decode_rate({}) 失败", code));
             assert_eq!(rate, decoded, "采样率 {} 编解码往返应一致", rate);
         }
     }
