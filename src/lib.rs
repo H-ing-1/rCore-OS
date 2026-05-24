@@ -15,9 +15,8 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
-use alloc::string::String;
 use core::fmt;
-use core::sync::atomic::{AtomicU16, Ordering};
+use core::sync::atomic::Ordering;
 
 // ============================================================
 // 第一部分：常量与基础数据结构
@@ -1063,11 +1062,21 @@ impl VirtioSound {
         Ok(())
     }
 
-    /// 配置并启动指定的 PCM 数据流（SET_PARAMS → PREPARE → START 一键完成）
+    /// 对指定流写入默认参数配置。
     ///
-    /// 若中间步骤失败，尝试回滚到 SetParameters 状态并返回错误。
-    pub fn setup_and_start(&mut self, stream_id: u32) -> Result<(), SndError> {
-        // 找到流（可变引用）
+    /// 当前原型统一使用 `buffer_bytes=4096` 与 `period_bytes=512`
+    /// 作为默认参数，便于测试和评审复现。
+    pub fn configure_stream_defaults(&mut self, stream_id: u32) -> Result<(), SndError> {
+        self.configure_stream(stream_id, 4096, 512)
+    }
+
+    /// 对指定流发送 SET_PARAMS 命令。
+    pub fn configure_stream(
+        &mut self,
+        stream_id: u32,
+        buffer_bytes: u32,
+        period_bytes: u32,
+    ) -> Result<(), SndError> {
         let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
 
@@ -1076,30 +1085,95 @@ impl VirtioSound {
             let mut handler = ControlHandler::new(
                 &mut self.control_queue, self.config, self.features,
             );
-            // 发送参数配置
-            handler.send_set_params(stream, 4096, 512)?;
-            // 准备阶段
+            handler.send_set_params(stream, buffer_bytes, period_bytes)?;
+        }
+        Ok(())
+    }
+
+    /// 对指定流发送 PREPARE 命令。
+    pub fn prepare_stream(&mut self, stream_id: u32) -> Result<(), SndError> {
+        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+            .ok_or(SndError::InvalidStreamId)?;
+
+        {
+            let stream = &mut self.streams[stream_idx];
+            let mut handler = ControlHandler::new(
+                &mut self.control_queue, self.config, self.features,
+            );
             handler.send_prepare(stream)?;
-            // 启动
+        }
+        Ok(())
+    }
+
+    /// 对指定流发送 START 命令。
+    pub fn start_stream(&mut self, stream_id: u32) -> Result<(), SndError> {
+        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+            .ok_or(SndError::InvalidStreamId)?;
+
+        {
+            let stream = &mut self.streams[stream_idx];
+            let mut handler = ControlHandler::new(
+                &mut self.control_queue, self.config, self.features,
+            );
             handler.send_start(stream)?;
         }
         Ok(())
     }
 
-    /// 停止并释放指定 PCM 流
-    pub fn stop_and_release(&mut self, stream_id: u32) -> Result<(), SndError> {
+    /// 对指定流发送 STOP 命令。
+    pub fn stop_stream(&mut self, stream_id: u32) -> Result<(), SndError> {
         let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
 
-        let stream = &mut self.streams[stream_idx];
-        let mut handler = ControlHandler::new(
-            &mut self.control_queue, self.config, self.features,
-        );
-        if stream.state == StreamState::Start {
+        {
+            let stream = &mut self.streams[stream_idx];
+            let mut handler = ControlHandler::new(
+                &mut self.control_queue, self.config, self.features,
+            );
             handler.send_stop(stream)?;
         }
-        if stream.state == StreamState::Stop || stream.state == StreamState::Prepare {
+        Ok(())
+    }
+
+    /// 对指定流发送 RELEASE 命令。
+    pub fn release_stream(&mut self, stream_id: u32) -> Result<(), SndError> {
+        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+            .ok_or(SndError::InvalidStreamId)?;
+
+        {
+            let stream = &mut self.streams[stream_idx];
+            let mut handler = ControlHandler::new(
+                &mut self.control_queue, self.config, self.features,
+            );
             handler.send_release(stream)?;
+        }
+        Ok(())
+    }
+
+    /// 配置并启动指定的 PCM 数据流（SET_PARAMS → PREPARE → START 一键完成）
+    ///
+    /// 若中间步骤失败，尝试回滚到 SetParameters 状态并返回错误。
+    pub fn setup_and_start(&mut self, stream_id: u32) -> Result<(), SndError> {
+        self.configure_stream_defaults(stream_id)?;
+        self.prepare_stream(stream_id)?;
+        self.start_stream(stream_id)?;
+        Ok(())
+    }
+
+    /// 停止并释放指定 PCM 流
+    pub fn stop_and_release(&mut self, stream_id: u32) -> Result<(), SndError> {
+        let state = self.get_stream(stream_id)
+            .ok_or(SndError::InvalidStreamId)?
+            .state;
+        if state == StreamState::Start {
+            self.stop_stream(stream_id)?;
+        }
+
+        let state = self.get_stream(stream_id)
+            .ok_or(SndError::InvalidStreamId)?
+            .state;
+        if state == StreamState::Stop || state == StreamState::Prepare {
+            self.release_stream(stream_id)?;
         }
         Ok(())
     }
@@ -1386,7 +1460,9 @@ mod tests {
         let buf = [0u8; 8];
         let chain = [VirtqDesc::readable(buf.as_ptr() as u64, 8)];
         q.add_chain(&chain).unwrap();
-        assert_eq!(q.num_added, 0, "add_chain 内部已调用 notify，num_added 应为 0");
+        assert_eq!(q.num_added, 1, "add_chain 后应先累计待通知描述符");
+        q.notify_device();
+        assert_eq!(q.num_added, 0, "notify_device 后 num_added 应清零");
     }
 
     #[test]
@@ -1832,15 +1908,8 @@ mod tests {
         let mut drv  = VirtioSound::new(config, features);
         drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
 
-        // 手动推进到 Prepare（不 Start）
-        {
-            let stream = drv.get_stream_mut(0).unwrap();
-            let mut handler = ControlHandler::new(
-                &mut drv.control_queue, drv.config, drv.features,
-            );
-            handler.send_set_params(stream, 4096, 512).unwrap();
-            handler.send_prepare(stream).unwrap();
-        }
+        drv.configure_stream_defaults(0).unwrap();
+        drv.prepare_stream(0).unwrap();
 
         let buf = [0u8; 64];
         let result = drv.write_audio_frames(0, &buf);
@@ -1941,14 +2010,7 @@ mod tests {
         drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
         drv.setup_and_start(0).unwrap();
 
-        // 手动把状态推到 Stop
-        {
-            let stream = drv.get_stream_mut(0).unwrap();
-            let mut handler = ControlHandler::new(
-                &mut drv.control_queue, drv.config, drv.features,
-            );
-            handler.send_stop(stream).unwrap();
-        }
+        drv.stop_stream(0).unwrap();
         assert_eq!(drv.get_stream(0).unwrap().state, StreamState::Stop);
         drv.stop_and_release(0).unwrap();
         assert_eq!(drv.get_stream(0).unwrap().state, StreamState::Release);

@@ -1,0 +1,22 @@
+[package]
+name = "rcore-os-virtio-snd"
+version = "0.1.0"
+edition = "2021"
+authors = ["H-ing-1 <1344056560@qq.com>"]
+description = "Auditable VirtIO sound driver prototype for the rCore-OS competition track."
+license = "MIT"
+repository = "https://github.com/H-ing-1/rCore-OS"
+readme = "README.md"
+keywords = ["rcore", "arceos", "virtio", "audio", "driver"]
+
+[lib]
+path = "src/lib.rs"
+
+[features]
+default = []
+
+[package.metadata.competition]
+track = "开源社区唐图 rCore-OS"
+updated_after = "2026-05-24"
+independent_features = 4
+effective_loc_estimate = 1377
