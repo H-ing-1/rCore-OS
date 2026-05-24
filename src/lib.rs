@@ -2170,9 +2170,9 @@ mod tests {
         ];
         for &rate in &rates {
             let code = ControlHandler::encode_rate(rate)
-                .expect(&alloc::format!("encode_rate({}) 失败", rate));
+                .unwrap_or_else(|_| panic!("encode_rate({}) 失败", rate));
             let decoded = ControlHandler::decode_rate(code)
-                .expect(&alloc::format!("decode_rate({}) 失败", code));
+                .unwrap_or_else(|_| panic!("decode_rate({}) 失败", code));
             assert_eq!(rate, decoded, "采样率 {} 编解码往返应一致", rate);
         }
     }
