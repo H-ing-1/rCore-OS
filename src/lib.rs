@@ -254,7 +254,7 @@ impl VirtqDesc {
 
 /// VirtQueue 可用环条目（Driver → Device 通知）
 #[repr(C)]
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct VirtqAvail {
     /// 标志（bit0：不需要中断通知）
     pub flags: u16,
@@ -264,6 +264,17 @@ pub struct VirtqAvail {
     pub ring: [u16; QUEUE_SIZE],
     /// 用于事件抑制的 used_event（可选）
     pub used_event: u16,
+}
+
+impl Default for VirtqAvail {
+    fn default() -> Self {
+        Self {
+            flags: 0,
+            idx: 0,
+            ring: [0; QUEUE_SIZE],
+            used_event: 0,
+        }
+    }
 }
 
 /// VirtQueue 已用环条目
