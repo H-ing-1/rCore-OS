@@ -1,5 +1,5 @@
 use rcore_os_virtio_snd::{
-    PcmFormat, SndQueue, StreamDirection, VirtQueue, VirtioSound, VirtioSndConfig,
+    PcmFormat, SndQueue, StreamDirection, VirtQueue, VirtioSndConfig, VirtioSound,
 };
 
 fn main() {

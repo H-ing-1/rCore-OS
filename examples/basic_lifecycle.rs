@@ -1,6 +1,4 @@
-use rcore_os_virtio_snd::{
-    PcmFormat, StreamDirection, VirtioSound, VirtioSndConfig,
-};
+use rcore_os_virtio_snd::{PcmFormat, StreamDirection, VirtioSndConfig, VirtioSound};
 
 fn main() {
     let config = VirtioSndConfig {

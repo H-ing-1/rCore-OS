@@ -191,16 +191,16 @@ pub enum SndError {
 impl fmt::Display for SndError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            SndError::UnsupportedFeature    => write!(f, "Feature not supported by device"),
-            SndError::InvalidStreamId       => write!(f, "Invalid PCM stream ID"),
-            SndError::InvalidState          => write!(f, "Stream is in an invalid state for this operation"),
-            SndError::QueueFull             => write!(f, "Virtqueue is full"),
-            SndError::DeviceError           => write!(f, "Hardware/Device error occurred"),
-            SndError::InvalidParameter      => write!(f, "Invalid command parameter"),
-            SndError::ChmapOutOfRange       => write!(f, "Channel map index out of range"),
-            SndError::VolumeOutOfRange      => write!(f, "Volume value out of range [0, 255]"),
-            SndError::Timeout               => write!(f, "Command timed out"),
-            SndError::QueueIndexOutOfRange  => write!(f, "Queue index out of range"),
+            SndError::UnsupportedFeature => write!(f, "Feature not supported by device"),
+            SndError::InvalidStreamId => write!(f, "Invalid PCM stream ID"),
+            SndError::InvalidState => write!(f, "Stream is in an invalid state for this operation"),
+            SndError::QueueFull => write!(f, "Virtqueue is full"),
+            SndError::DeviceError => write!(f, "Hardware/Device error occurred"),
+            SndError::InvalidParameter => write!(f, "Invalid command parameter"),
+            SndError::ChmapOutOfRange => write!(f, "Channel map index out of range"),
+            SndError::VolumeOutOfRange => write!(f, "Volume value out of range [0, 255]"),
+            SndError::Timeout => write!(f, "Command timed out"),
+            SndError::QueueIndexOutOfRange => write!(f, "Queue index out of range"),
         }
     }
 }
@@ -226,12 +226,22 @@ pub struct VirtqDesc {
 impl VirtqDesc {
     /// 创建一个只读（Driver-Readable）描述符
     pub fn readable(addr: u64, len: u32) -> Self {
-        Self { addr, len, flags: 0, next: 0 }
+        Self {
+            addr,
+            len,
+            flags: 0,
+            next: 0,
+        }
     }
 
     /// 创建一个只写（Device-Writable）描述符
     pub fn writable(addr: u64, len: u32) -> Self {
-        Self { addr, len, flags: VIRTQ_DESC_F_WRITE, next: 0 }
+        Self {
+            addr,
+            len,
+            flags: VIRTQ_DESC_F_WRITE,
+            next: 0,
+        }
     }
 
     /// 追加链表下一节点
@@ -326,7 +336,11 @@ impl VirtQueue {
                 addr: 0,
                 len: 0,
                 flags: 0,
-                next: if i + 1 < QUEUE_SIZE { (i + 1) as u16 } else { 0 },
+                next: if i + 1 < QUEUE_SIZE {
+                    (i + 1) as u16
+                } else {
+                    0
+                },
             });
         }
         Self {
@@ -492,7 +506,10 @@ impl VirtQueue {
     #[cfg(test)]
     pub fn simulate_device_complete(&mut self, head_idx: u16, written_len: u32) {
         let slot = (self.used.idx as usize) % QUEUE_SIZE;
-        self.used.ring[slot] = VirtqUsedElem { id: head_idx as u32, len: written_len };
+        self.used.ring[slot] = VirtqUsedElem {
+            id: head_idx as u32,
+            len: written_len,
+        };
         self.used.idx = self.used.idx.wrapping_add(1);
     }
 
@@ -618,7 +635,11 @@ pub struct ControlHandler<'a> {
 impl<'a> ControlHandler<'a> {
     /// 创建控制命令处理器
     pub fn new(ctrl_queue: &'a mut VirtQueue, config: VirtioSndConfig, features: u64) -> Self {
-        Self { ctrl_queue, config, features }
+        Self {
+            ctrl_queue,
+            config,
+            features,
+        }
     }
 
     // ----------------------------------------------------------
@@ -655,7 +676,9 @@ impl<'a> ControlHandler<'a> {
 
         // 构造请求负载（此处用模拟字节数组代替真实 DMA 地址）
         let req = VirtioSndPcmSetParams {
-            hdr: VirtioSndHdr { code: VIRTIO_SND_R_PCM_SET_PARAMS },
+            hdr: VirtioSndHdr {
+                code: VIRTIO_SND_R_PCM_SET_PARAMS,
+            },
             stream_id: stream.stream_id,
             buffer_bytes,
             period_bytes,
@@ -672,7 +695,10 @@ impl<'a> ControlHandler<'a> {
         let resp_addr = resp_buf.as_ptr() as u64;
 
         let chain = [
-            VirtqDesc::readable(req_addr, core::mem::size_of::<VirtioSndPcmSetParams>() as u32),
+            VirtqDesc::readable(
+                req_addr,
+                core::mem::size_of::<VirtioSndPcmSetParams>() as u32,
+            ),
             VirtqDesc::writable(resp_addr, 4),
         ];
         self.ctrl_queue.add_chain(&chain)?;
@@ -752,7 +778,9 @@ impl<'a> ControlHandler<'a> {
         }
 
         let cmd = VirtioSndMuteCmd {
-            hdr: VirtioSndHdr { code: VIRTIO_SND_R_PCM_MUTE },
+            hdr: VirtioSndHdr {
+                code: VIRTIO_SND_R_PCM_MUTE,
+            },
             stream_id: stream.stream_id,
             mute: mute as u8,
             _padding: [0; 3],
@@ -813,7 +841,9 @@ impl<'a> ControlHandler<'a> {
         // volume 类型为 u8，范围已由类型保证 [0, 255]，此处额外记录语义
 
         let cmd = VirtioSndVolumeCmd {
-            hdr: VirtioSndHdr { code: VIRTIO_SND_R_PCM_VOLUME },
+            hdr: VirtioSndHdr {
+                code: VIRTIO_SND_R_PCM_VOLUME,
+            },
             stream_id: stream.stream_id,
             volume,
             _padding: [0; 3],
@@ -862,7 +892,9 @@ impl<'a> ControlHandler<'a> {
         }
 
         let req = VirtioSndChmapInfo {
-            hdr: VirtioSndHdr { code: VIRTIO_SND_R_CHMAP_INFO },
+            hdr: VirtioSndHdr {
+                code: VIRTIO_SND_R_CHMAP_INFO,
+            },
             stream_id: stream.stream_id,
             channels: stream.channels,
             positions: [0u8; 18],
@@ -905,11 +937,11 @@ impl<'a> ControlHandler<'a> {
     /// | 其他                    | 未知错误           | `DeviceError`             |
     fn parse_response(&self, code: u32) -> Result<(), SndError> {
         match code {
-            VIRTIO_SND_S_OK       => Ok(()),
+            VIRTIO_SND_S_OK => Ok(()),
             VIRTIO_SND_S_NOT_SUPP => Err(SndError::UnsupportedFeature),
-            VIRTIO_SND_S_IO_ERR   => Err(SndError::DeviceError),
-            0                     => Ok(()), // 模拟环境：未填充响应时视为成功
-            _                     => Err(SndError::DeviceError),
+            VIRTIO_SND_S_IO_ERR => Err(SndError::DeviceError),
+            0 => Ok(()), // 模拟环境：未填充响应时视为成功
+            _ => Err(SndError::DeviceError),
         }
     }
 
@@ -946,42 +978,42 @@ impl<'a> ControlHandler<'a> {
     /// 96000 → 10, 176400 → 11, 192000 → 12, 384000 → 13
     fn encode_rate(rate: u32) -> Result<u8, SndError> {
         match rate {
-            5512   => Ok(0),
-            8000   => Ok(1),
-            11025  => Ok(2),
-            16000  => Ok(3),
-            22050  => Ok(4),
-            32000  => Ok(5),
-            44100  => Ok(6),
-            48000  => Ok(7),
-            64000  => Ok(8),
-            88200  => Ok(9),
-            96000  => Ok(10),
+            5512 => Ok(0),
+            8000 => Ok(1),
+            11025 => Ok(2),
+            16000 => Ok(3),
+            22050 => Ok(4),
+            32000 => Ok(5),
+            44100 => Ok(6),
+            48000 => Ok(7),
+            64000 => Ok(8),
+            88200 => Ok(9),
+            96000 => Ok(10),
             176400 => Ok(11),
             192000 => Ok(12),
             384000 => Ok(13),
-            _      => Err(SndError::InvalidParameter),
+            _ => Err(SndError::InvalidParameter),
         }
     }
 
     /// 将采样率枚举值解码回 Hz
     pub fn decode_rate(code: u8) -> Option<u32> {
         match code {
-            0  => Some(5512),
-            1  => Some(8000),
-            2  => Some(11025),
-            3  => Some(16000),
-            4  => Some(22050),
-            5  => Some(32000),
-            6  => Some(44100),
-            7  => Some(48000),
-            8  => Some(64000),
-            9  => Some(88200),
+            0 => Some(5512),
+            1 => Some(8000),
+            2 => Some(11025),
+            3 => Some(16000),
+            4 => Some(22050),
+            5 => Some(32000),
+            6 => Some(44100),
+            7 => Some(48000),
+            8 => Some(64000),
+            9 => Some(88200),
             10 => Some(96000),
             11 => Some(176400),
             12 => Some(192000),
             13 => Some(384000),
-            _  => None,
+            _ => None,
         }
     }
 }
@@ -1021,9 +1053,9 @@ impl VirtioSound {
             config,
             features: negotiated_features,
             control_queue: VirtQueue::new(SndQueue::Control),
-            event_queue:   VirtQueue::new(SndQueue::Event),
-            tx_queue:      VirtQueue::new(SndQueue::Tx),
-            rx_queue:      VirtQueue::new(SndQueue::Rx),
+            event_queue: VirtQueue::new(SndQueue::Event),
+            tx_queue: VirtQueue::new(SndQueue::Tx),
+            rx_queue: VirtQueue::new(SndQueue::Rx),
             streams: Vec::with_capacity(config.streams as usize),
             global_mute: false,
         }
@@ -1077,14 +1109,16 @@ impl VirtioSound {
         buffer_bytes: u32,
         period_bytes: u32,
     ) -> Result<(), SndError> {
-        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+        let stream_idx = self
+            .streams
+            .iter()
+            .position(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
 
         {
             let stream = &mut self.streams[stream_idx];
-            let mut handler = ControlHandler::new(
-                &mut self.control_queue, self.config, self.features,
-            );
+            let mut handler =
+                ControlHandler::new(&mut self.control_queue, self.config, self.features);
             handler.send_set_params(stream, buffer_bytes, period_bytes)?;
         }
         Ok(())
@@ -1092,14 +1126,16 @@ impl VirtioSound {
 
     /// 对指定流发送 PREPARE 命令。
     pub fn prepare_stream(&mut self, stream_id: u32) -> Result<(), SndError> {
-        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+        let stream_idx = self
+            .streams
+            .iter()
+            .position(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
 
         {
             let stream = &mut self.streams[stream_idx];
-            let mut handler = ControlHandler::new(
-                &mut self.control_queue, self.config, self.features,
-            );
+            let mut handler =
+                ControlHandler::new(&mut self.control_queue, self.config, self.features);
             handler.send_prepare(stream)?;
         }
         Ok(())
@@ -1107,14 +1143,16 @@ impl VirtioSound {
 
     /// 对指定流发送 START 命令。
     pub fn start_stream(&mut self, stream_id: u32) -> Result<(), SndError> {
-        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+        let stream_idx = self
+            .streams
+            .iter()
+            .position(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
 
         {
             let stream = &mut self.streams[stream_idx];
-            let mut handler = ControlHandler::new(
-                &mut self.control_queue, self.config, self.features,
-            );
+            let mut handler =
+                ControlHandler::new(&mut self.control_queue, self.config, self.features);
             handler.send_start(stream)?;
         }
         Ok(())
@@ -1122,14 +1160,16 @@ impl VirtioSound {
 
     /// 对指定流发送 STOP 命令。
     pub fn stop_stream(&mut self, stream_id: u32) -> Result<(), SndError> {
-        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+        let stream_idx = self
+            .streams
+            .iter()
+            .position(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
 
         {
             let stream = &mut self.streams[stream_idx];
-            let mut handler = ControlHandler::new(
-                &mut self.control_queue, self.config, self.features,
-            );
+            let mut handler =
+                ControlHandler::new(&mut self.control_queue, self.config, self.features);
             handler.send_stop(stream)?;
         }
         Ok(())
@@ -1137,14 +1177,16 @@ impl VirtioSound {
 
     /// 对指定流发送 RELEASE 命令。
     pub fn release_stream(&mut self, stream_id: u32) -> Result<(), SndError> {
-        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+        let stream_idx = self
+            .streams
+            .iter()
+            .position(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
 
         {
             let stream = &mut self.streams[stream_idx];
-            let mut handler = ControlHandler::new(
-                &mut self.control_queue, self.config, self.features,
-            );
+            let mut handler =
+                ControlHandler::new(&mut self.control_queue, self.config, self.features);
             handler.send_release(stream)?;
         }
         Ok(())
@@ -1162,14 +1204,16 @@ impl VirtioSound {
 
     /// 停止并释放指定 PCM 流
     pub fn stop_and_release(&mut self, stream_id: u32) -> Result<(), SndError> {
-        let state = self.get_stream(stream_id)
+        let state = self
+            .get_stream(stream_id)
             .ok_or(SndError::InvalidStreamId)?
             .state;
         if state == StreamState::Start {
             self.stop_stream(stream_id)?;
         }
 
-        let state = self.get_stream(stream_id)
+        let state = self
+            .get_stream(stream_id)
             .ok_or(SndError::InvalidStreamId)?
             .state;
         if state == StreamState::Stop || state == StreamState::Prepare {
@@ -1189,7 +1233,10 @@ impl VirtioSound {
     /// 设备消费该链后，将已用元素写入 TX 已用环，驱动通过
     /// `process_tx_completions` 回收描述符。
     pub fn write_audio_frames(&mut self, stream_id: u32, buffer: &[u8]) -> Result<usize, SndError> {
-        let stream = self.streams.iter().find(|s| s.stream_id == stream_id)
+        let stream = self
+            .streams
+            .iter()
+            .find(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
 
         if stream.state != StreamState::Start {
@@ -1208,14 +1255,14 @@ impl VirtioSound {
             h
         };
 
-        let hdr_addr  = frame_hdr.as_ptr() as u64;
+        let hdr_addr = frame_hdr.as_ptr() as u64;
         let data_addr = buffer.as_ptr() as u64;
         let status_buf = [0u8; 4];
         let status_addr = status_buf.as_ptr() as u64;
 
         let chain = [
-            VirtqDesc::readable(hdr_addr,    8),
-            VirtqDesc::readable(data_addr,   buffer.len() as u32),
+            VirtqDesc::readable(hdr_addr, 8),
+            VirtqDesc::readable(data_addr, buffer.len() as u32),
             VirtqDesc::writable(status_addr, 4),
         ];
 
@@ -1249,13 +1296,15 @@ impl VirtioSound {
         if self.features & VIRTIO_SND_F_PCM_INFO == 0 {
             return Err(SndError::UnsupportedFeature);
         }
-        let req = VirtioSndHdr { code: VIRTIO_SND_R_PCM_INFO };
+        let req = VirtioSndHdr {
+            code: VIRTIO_SND_R_PCM_INFO,
+        };
         let req_addr = &req as *const _ as u64;
         let resp_buf = [0u8; 4];
         let resp_addr = resp_buf.as_ptr() as u64;
 
         let chain = [
-            VirtqDesc::readable(req_addr,  core::mem::size_of::<VirtioSndHdr>() as u32),
+            VirtqDesc::readable(req_addr, core::mem::size_of::<VirtioSndHdr>() as u32),
             VirtqDesc::writable(resp_addr, 4),
         ];
         self.control_queue.add_chain(&chain)?;
@@ -1265,24 +1314,26 @@ impl VirtioSound {
 
     /// 对指定流执行静音切换（toggle）
     pub fn toggle_mute(&mut self, stream_id: u32) -> Result<(), SndError> {
-        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+        let stream_idx = self
+            .streams
+            .iter()
+            .position(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
         let new_mute = !self.streams[stream_idx].muted;
         let stream = &mut self.streams[stream_idx];
-        let mut handler = ControlHandler::new(
-            &mut self.control_queue, self.config, self.features,
-        );
+        let mut handler = ControlHandler::new(&mut self.control_queue, self.config, self.features);
         handler.send_mute(stream, new_mute)
     }
 
     /// 设置指定流的音量
     pub fn set_volume(&mut self, stream_id: u32, volume: u8) -> Result<(), SndError> {
-        let stream_idx = self.streams.iter().position(|s| s.stream_id == stream_id)
+        let stream_idx = self
+            .streams
+            .iter()
+            .position(|s| s.stream_id == stream_id)
             .ok_or(SndError::InvalidStreamId)?;
         let stream = &mut self.streams[stream_idx];
-        let mut handler = ControlHandler::new(
-            &mut self.control_queue, self.config, self.features,
-        );
+        let mut handler = ControlHandler::new(&mut self.control_queue, self.config, self.features);
         handler.send_volume(stream, volume)
     }
 
@@ -1307,9 +1358,8 @@ impl VirtioSound {
         for id in stream_ids {
             let stream_idx = self.streams.iter().position(|s| s.stream_id == id).unwrap();
             let stream = &mut self.streams[stream_idx];
-            let mut handler = ControlHandler::new(
-                &mut self.control_queue, self.config, self.features,
-            );
+            let mut handler =
+                ControlHandler::new(&mut self.control_queue, self.config, self.features);
             // 忽略单流失败，尽量全部设置
             let _ = handler.send_mute(stream, mute);
         }
@@ -1332,7 +1382,11 @@ mod tests {
 
     /// 构造一个拥有 4 条流的测试用驱动实例
     fn make_driver() -> VirtioSound {
-        let config = VirtioSndConfig { jacks: 1, streams: 4, chmaps: 2 };
+        let config = VirtioSndConfig {
+            jacks: 1,
+            streams: 4,
+            chmaps: 2,
+        };
         let features = VIRTIO_SND_F_PCM_INFO | VIRTIO_SND_F_CHMAP_INFO | VIRTIO_SND_F_JACK_INFO;
         VirtioSound::new(config, features)
     }
@@ -1366,7 +1420,7 @@ mod tests {
         // 新队列应有满额空闲描述符
         let q = VirtQueue::new(SndQueue::Control);
         assert_eq!(q.avail.idx, 0, "初始 avail.idx 应为 0");
-        assert_eq!(q.used.idx,  0, "初始 used.idx 应为 0");
+        assert_eq!(q.used.idx, 0, "初始 used.idx 应为 0");
         assert_eq!(q.last_used_idx, 0);
         assert_eq!(q.free_head, 0, "空闲链表头应从 0 开始");
     }
@@ -1386,10 +1440,10 @@ mod tests {
     fn test_virtqueue_add_multi_desc_chain() {
         // 写入两个描述符的链，验证 NEXT 标志和链接
         let mut q = VirtQueue::new(SndQueue::Control);
-        let req_buf  = [1u8; 8];
+        let req_buf = [1u8; 8];
         let resp_buf = [0u8; 4];
         let chain = [
-            VirtqDesc::readable(req_buf.as_ptr()  as u64, 8),
+            VirtqDesc::readable(req_buf.as_ptr() as u64, 8),
             VirtqDesc::writable(resp_buf.as_ptr() as u64, 4),
         ];
         let head = q.add_chain(&chain).expect("双描述符链添加失败");
@@ -1451,7 +1505,11 @@ mod tests {
     fn test_virtqueue_empty_chain_returns_error() {
         let mut q = VirtQueue::new(SndQueue::Control);
         let result = q.add_chain(&[]);
-        assert_eq!(result, Err(SndError::InvalidParameter), "空描述符链应返回 InvalidParameter");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidParameter),
+            "空描述符链应返回 InvalidParameter"
+        );
     }
 
     #[test]
@@ -1507,18 +1565,28 @@ mod tests {
     #[test]
     fn test_stream_initial_state_is_set_parameters() {
         let s = make_stream(0);
-        assert_eq!(s.state, StreamState::SetParameters, "流初始状态应为 SetParameters");
+        assert_eq!(
+            s.state,
+            StreamState::SetParameters,
+            "流初始状态应为 SetParameters"
+        );
     }
 
     #[test]
     fn test_state_transition_set_params_to_prepare() {
-        let config  = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
 
         let mut handler = ControlHandler::new(&mut q, cfg, feat);
-        handler.send_set_params(&mut stream, 4096, 512).expect("set_params 失败");
+        handler
+            .send_set_params(&mut stream, 4096, 512)
+            .expect("set_params 失败");
         assert_eq!(stream.state, StreamState::SetParameters);
         handler.send_prepare(&mut stream).expect("prepare 失败");
         assert_eq!(stream.state, StreamState::Prepare, "状态应转为 Prepare");
@@ -1526,7 +1594,11 @@ mod tests {
 
     #[test]
     fn test_state_transition_prepare_to_start() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1540,7 +1612,11 @@ mod tests {
 
     #[test]
     fn test_state_transition_start_to_stop() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1556,7 +1632,11 @@ mod tests {
     #[test]
     fn test_state_transition_stop_to_start_resume() {
         // Stop → Start 是合法的恢复操作
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1567,12 +1647,20 @@ mod tests {
         handler.send_start(&mut stream).unwrap();
         handler.send_stop(&mut stream).unwrap();
         handler.send_start(&mut stream).unwrap();
-        assert_eq!(stream.state, StreamState::Start, "Stop → Start 应成功（恢复）");
+        assert_eq!(
+            stream.state,
+            StreamState::Start,
+            "Stop → Start 应成功（恢复）"
+        );
     }
 
     #[test]
     fn test_state_transition_stop_to_release() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1593,7 +1681,11 @@ mod tests {
     #[test]
     fn test_illegal_start_from_set_parameters() {
         // SetParameters → Start 是非法的，缺少 Prepare 步骤
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1601,7 +1693,11 @@ mod tests {
 
         let mut handler = ControlHandler::new(&mut q, cfg, feat);
         let result = handler.send_start(&mut stream);
-        assert_eq!(result, Err(SndError::InvalidState), "从 SetParameters 直接 Start 应被拦截");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidState),
+            "从 SetParameters 直接 Start 应被拦截"
+        );
         // 状态不应改变
         assert_eq!(stream.state, StreamState::SetParameters);
     }
@@ -1609,7 +1705,11 @@ mod tests {
     #[test]
     fn test_illegal_stop_from_prepare() {
         // Prepare → Stop 是非法的（只能 Start 或 Release）
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1619,14 +1719,22 @@ mod tests {
         handler.send_prepare(&mut stream).unwrap();
 
         let result = handler.send_stop(&mut stream);
-        assert_eq!(result, Err(SndError::InvalidState), "从 Prepare 直接 Stop 应被拦截");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidState),
+            "从 Prepare 直接 Stop 应被拦截"
+        );
         assert_eq!(stream.state, StreamState::Prepare);
     }
 
     #[test]
     fn test_illegal_prepare_from_start() {
         // Start → Prepare 是非法的（必须先 Stop）
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1637,14 +1745,22 @@ mod tests {
         handler.send_start(&mut stream).unwrap();
 
         let result = handler.send_prepare(&mut stream);
-        assert_eq!(result, Err(SndError::InvalidState), "从 Start 直接 Prepare 应被拦截");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidState),
+            "从 Start 直接 Prepare 应被拦截"
+        );
         assert_eq!(stream.state, StreamState::Start);
     }
 
     #[test]
     fn test_illegal_release_from_start() {
         // Start 状态下不能直接 Release（必须先 Stop）
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1655,26 +1771,42 @@ mod tests {
         handler.send_start(&mut stream).unwrap();
 
         let result = handler.send_release(&mut stream);
-        assert_eq!(result, Err(SndError::InvalidState), "从 Start 直接 Release 应被拦截");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidState),
+            "从 Start 直接 Release 应被拦截"
+        );
         assert_eq!(stream.state, StreamState::Start);
     }
 
     #[test]
     fn test_illegal_release_from_set_parameters() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
 
         let mut handler = ControlHandler::new(&mut q, cfg, feat);
         let result = handler.send_release(&mut stream);
-        assert_eq!(result, Err(SndError::InvalidState), "从 SetParameters 直接 Release 应被拦截");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidState),
+            "从 SetParameters 直接 Release 应被拦截"
+        );
     }
 
     #[test]
     fn test_illegal_stop_from_release() {
         // Release 状态下调用 Stop 应报错
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1694,31 +1826,51 @@ mod tests {
 
     #[test]
     fn test_set_params_zero_buffer_rejected() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
 
         let mut handler = ControlHandler::new(&mut q, cfg, feat);
         let result = handler.send_set_params(&mut stream, 0, 512);
-        assert_eq!(result, Err(SndError::InvalidParameter), "buffer_bytes=0 应被拦截");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidParameter),
+            "buffer_bytes=0 应被拦截"
+        );
     }
 
     #[test]
     fn test_set_params_period_larger_than_buffer_rejected() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
 
         let mut handler = ControlHandler::new(&mut q, cfg, feat);
         let result = handler.send_set_params(&mut stream, 256, 512);
-        assert_eq!(result, Err(SndError::InvalidParameter), "period > buffer 应被拦截");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidParameter),
+            "period > buffer 应被拦截"
+        );
     }
 
     #[test]
     fn test_set_params_invalid_stream_id_rejected() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 2, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 2,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(99); // stream_id=99 超出 config.streams=2
@@ -1731,7 +1883,8 @@ mod tests {
     #[test]
     fn test_register_stream_duplicate_rejected() {
         let mut drv = make_driver();
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
         let result = drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100);
         assert_eq!(result, Err(SndError::InvalidParameter), "重复注册应被拒绝");
     }
@@ -1740,17 +1893,29 @@ mod tests {
     fn test_register_stream_invalid_channels() {
         let mut drv = make_driver();
         let result = drv.register_stream(0, StreamDirection::Output, 0, PcmFormat::S16Le, 44100);
-        assert_eq!(result, Err(SndError::InvalidParameter), "channels=0 应被拒绝");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidParameter),
+            "channels=0 应被拒绝"
+        );
 
         let result2 = drv.register_stream(1, StreamDirection::Output, 19, PcmFormat::S16Le, 44100);
-        assert_eq!(result2, Err(SndError::InvalidParameter), "channels=19 超过 18 应被拒绝");
+        assert_eq!(
+            result2,
+            Err(SndError::InvalidParameter),
+            "channels=19 超过 18 应被拒绝"
+        );
     }
 
     #[test]
     fn test_register_stream_out_of_range_id() {
         let mut drv = make_driver();
         let result = drv.register_stream(100, StreamDirection::Output, 2, PcmFormat::S16Le, 44100);
-        assert_eq!(result, Err(SndError::InvalidStreamId), "stream_id 超出配置范围应被拒绝");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidStreamId),
+            "stream_id 超出配置范围应被拒绝"
+        );
     }
 
     // =========================================================
@@ -1759,7 +1924,11 @@ mod tests {
 
     #[test]
     fn test_mute_allowed_in_start_state() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1776,20 +1945,32 @@ mod tests {
 
     #[test]
     fn test_mute_rejected_in_set_parameters_state() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
 
         let mut handler = ControlHandler::new(&mut q, cfg, feat);
         let result = handler.send_mute(&mut stream, true);
-        assert_eq!(result, Err(SndError::InvalidState), "SetParameters 状态下静音应被拦截");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidState),
+            "SetParameters 状态下静音应被拦截"
+        );
         assert!(!stream.muted, "失败后 muted 不应改变");
     }
 
     #[test]
     fn test_volume_update_on_success() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1805,7 +1986,11 @@ mod tests {
 
     #[test]
     fn test_volume_rejected_in_release_state() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let mut stream = make_stream(0);
@@ -1824,7 +2009,8 @@ mod tests {
     #[test]
     fn test_toggle_mute_via_driver() {
         let mut drv = make_driver();
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
         drv.setup_and_start(0).unwrap();
 
         assert!(!drv.get_stream(0).unwrap().muted);
@@ -1837,7 +2023,8 @@ mod tests {
     #[test]
     fn test_set_volume_via_driver() {
         let mut drv = make_driver();
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
         drv.setup_and_start(0).unwrap();
         drv.set_volume(0, 64).unwrap();
         assert_eq!(drv.get_stream(0).unwrap().volume, 64);
@@ -1849,7 +2036,11 @@ mod tests {
 
     #[test]
     fn test_chmap_query_requires_feature_flag() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 1 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 1,
+        };
         // 故意不包含 CHMAP_INFO 特性
         let features = VIRTIO_SND_F_PCM_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
@@ -1857,12 +2048,20 @@ mod tests {
 
         let mut handler = ControlHandler::new(&mut q, cfg, feat);
         let result = handler.query_chmap(&stream);
-        assert_eq!(result, Err(SndError::UnsupportedFeature), "无 CHMAP 特性时查询应返回 UnsupportedFeature");
+        assert_eq!(
+            result,
+            Err(SndError::UnsupportedFeature),
+            "无 CHMAP 特性时查询应返回 UnsupportedFeature"
+        );
     }
 
     #[test]
     fn test_chmap_query_invalid_stream_id() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 1 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 1,
+        };
         let features = VIRTIO_SND_F_PCM_INFO | VIRTIO_SND_F_CHMAP_INFO;
         let (mut q, cfg, feat) = make_handler(config, features);
         let stream = make_stream(99); // 非法 stream_id
@@ -1874,7 +2073,11 @@ mod tests {
 
     #[test]
     fn test_query_pcm_info_requires_feature() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 2, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 2,
+            chmaps: 0,
+        };
         // 不包含 PCM_INFO 特性
         let features = VIRTIO_SND_F_JACK_INFO;
         let mut drv = VirtioSound::new(config, features);
@@ -1889,7 +2092,8 @@ mod tests {
     #[test]
     fn test_write_audio_frames_success_in_start_state() {
         let mut drv = make_driver();
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
         drv.setup_and_start(0).unwrap();
 
         let pcm_data = [0i16; 512]; // 512 个 S16 采样 = 1024 字节
@@ -1903,23 +2107,33 @@ mod tests {
 
     #[test]
     fn test_write_audio_frames_rejected_in_prepare_state() {
-        let config   = VirtioSndConfig { jacks: 0, streams: 1, chmaps: 0 };
+        let config = VirtioSndConfig {
+            jacks: 0,
+            streams: 1,
+            chmaps: 0,
+        };
         let features = VIRTIO_SND_F_PCM_INFO;
-        let mut drv  = VirtioSound::new(config, features);
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        let mut drv = VirtioSound::new(config, features);
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
 
         drv.configure_stream_defaults(0).unwrap();
         drv.prepare_stream(0).unwrap();
 
         let buf = [0u8; 64];
         let result = drv.write_audio_frames(0, &buf);
-        assert_eq!(result, Err(SndError::InvalidState), "Prepare 状态下写入应被拦截");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidState),
+            "Prepare 状态下写入应被拦截"
+        );
     }
 
     #[test]
     fn test_write_audio_frames_empty_buffer_returns_zero() {
         let mut drv = make_driver();
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
         drv.setup_and_start(0).unwrap();
 
         let result = drv.write_audio_frames(0, &[]);
@@ -1939,11 +2153,15 @@ mod tests {
 
     #[test]
     fn test_rate_encode_decode_roundtrip() {
-        let rates = [5512u32, 8000, 11025, 16000, 22050, 32000, 44100, 48000,
-                     64000, 88200, 96000, 176400, 192000, 384000];
+        let rates = [
+            5512u32, 8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000, 88200, 96000, 176400,
+            192000, 384000,
+        ];
         for &rate in &rates {
-            let code = ControlHandler::encode_rate(rate).expect(&alloc::format!("encode_rate({}) 失败", rate));
-            let decoded = ControlHandler::decode_rate(code).expect(&alloc::format!("decode_rate({}) 失败", code));
+            let code = ControlHandler::encode_rate(rate)
+                .expect(&alloc::format!("encode_rate({}) 失败", rate));
+            let decoded = ControlHandler::decode_rate(code)
+                .expect(&alloc::format!("decode_rate({}) 失败", code));
             assert_eq!(rate, decoded, "采样率 {} 编解码往返应一致", rate);
         }
     }
@@ -1951,12 +2169,19 @@ mod tests {
     #[test]
     fn test_rate_encode_invalid_rate_rejected() {
         let result = ControlHandler::encode_rate(12345);
-        assert_eq!(result, Err(SndError::InvalidParameter), "非标准采样率应被拒绝");
+        assert_eq!(
+            result,
+            Err(SndError::InvalidParameter),
+            "非标准采样率应被拒绝"
+        );
     }
 
     #[test]
     fn test_rate_decode_invalid_code_returns_none() {
-        assert!(ControlHandler::decode_rate(200).is_none(), "非法采样率码应返回 None");
+        assert!(
+            ControlHandler::decode_rate(200).is_none(),
+            "非法采样率码应返回 None"
+        );
     }
 
     // =========================================================
@@ -1967,7 +2192,8 @@ mod tests {
     fn test_full_lifecycle_output_stream() {
         // 完整生命周期：注册 → setup_and_start → write → stop_and_release
         let mut drv = make_driver();
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
 
         drv.setup_and_start(0).unwrap();
         assert_eq!(drv.get_stream(0).unwrap().state, StreamState::Start);
@@ -1983,8 +2209,10 @@ mod tests {
     fn test_multiple_streams_independent() {
         // 多条流的状态应相互独立
         let mut drv = make_driver();
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
-        drv.register_stream(1, StreamDirection::Input,  1, PcmFormat::S16Le, 16000).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
+        drv.register_stream(1, StreamDirection::Input, 1, PcmFormat::S16Le, 16000)
+            .unwrap();
 
         drv.setup_and_start(0).unwrap();
         // 流 1 保持 SetParameters
@@ -1997,9 +2225,11 @@ mod tests {
     fn test_stream_count_after_registration() {
         let mut drv = make_driver();
         assert_eq!(drv.stream_count(), 0);
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
         assert_eq!(drv.stream_count(), 1);
-        drv.register_stream(1, StreamDirection::Input, 1, PcmFormat::S16Le, 8000).unwrap();
+        drv.register_stream(1, StreamDirection::Input, 1, PcmFormat::S16Le, 8000)
+            .unwrap();
         assert_eq!(drv.stream_count(), 2);
     }
 
@@ -2007,7 +2237,8 @@ mod tests {
     fn test_stop_and_release_from_stop_state() {
         // 若流已在 Stop 状态，stop_and_release 应只执行 Release
         let mut drv = make_driver();
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
         drv.setup_and_start(0).unwrap();
 
         drv.stop_stream(0).unwrap();
@@ -2019,8 +2250,10 @@ mod tests {
     #[test]
     fn test_global_mute_sets_all_streams() {
         let mut drv = make_driver();
-        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
-        drv.register_stream(1, StreamDirection::Output, 2, PcmFormat::S16Le, 44100).unwrap();
+        drv.register_stream(0, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
+        drv.register_stream(1, StreamDirection::Output, 2, PcmFormat::S16Le, 44100)
+            .unwrap();
 
         // 启动两条流
         drv.setup_and_start(0).unwrap();
@@ -2031,8 +2264,14 @@ mod tests {
         assert!(drv.get_stream(1).unwrap().muted, "流 1 应被全局静音");
 
         drv.set_global_mute(false).unwrap();
-        assert!(!drv.get_stream(0).unwrap().muted, "取消全局静音后流 0 应恢复");
-        assert!(!drv.get_stream(1).unwrap().muted, "取消全局静音后流 1 应恢复");
+        assert!(
+            !drv.get_stream(0).unwrap().muted,
+            "取消全局静音后流 0 应恢复"
+        );
+        assert!(
+            !drv.get_stream(1).unwrap().muted,
+            "取消全局静音后流 1 应恢复"
+        );
     }
 
     // =========================================================
@@ -2062,13 +2301,21 @@ mod tests {
     #[test]
     fn test_virtq_desc_readable_has_no_write_flag() {
         let d = VirtqDesc::readable(0x1000, 64);
-        assert_eq!(d.flags & VIRTQ_DESC_F_WRITE, 0, "只读描述符不应设置 WRITE 标志");
+        assert_eq!(
+            d.flags & VIRTQ_DESC_F_WRITE,
+            0,
+            "只读描述符不应设置 WRITE 标志"
+        );
     }
 
     #[test]
     fn test_virtq_desc_writable_has_write_flag() {
         let d = VirtqDesc::writable(0x2000, 32);
-        assert_eq!(d.flags & VIRTQ_DESC_F_WRITE, VIRTQ_DESC_F_WRITE, "可写描述符应设置 WRITE 标志");
+        assert_eq!(
+            d.flags & VIRTQ_DESC_F_WRITE,
+            VIRTQ_DESC_F_WRITE,
+            "可写描述符应设置 WRITE 标志"
+        );
     }
 
     #[test]
