@@ -2,7 +2,7 @@
 
 面向“开源社区唐图 rCore-OS”赛道的 `VirtIO Sound` 驱动原型仓库。
 
-本项目围绕 `virtio-snd` 设备支持展开，使用 Rust 实现了可审计的音频驱动核心逻辑，包括 `VirtQueue` 描述符环管理、PCM 生命周期控制、播放数据提交、音量与静音控制、通道映射查询，以及完整的单元测试设计与 CI 入口。仓库已整理成标准 Rust 项目结构，便于竞赛提交、代码审阅和后续继续迭代。
+我围绕 `virtio-snd` 设备支持完成了这个 Rust 驱动原型，实现了 `VirtQueue` 描述符环管理、PCM 生命周期控制、播放数据提交、音量与静音控制、通道映射查询、缓冲规划、信号分析和大规模工作负载目录，并补齐了单元测试与 CI 入口。仓库采用标准 Rust 项目结构，源码集中在 `src/` 目录，便于评审直接核查实现细节。
 
 ## 核心功能
 
@@ -15,10 +15,10 @@
 
 | 要求 | 当前实现 |
 | --- | --- |
-| 1000+ 行有效代码 | 核心源码约 `1377` 行非空、非注释 Rust 代码 |
-| 至少 2 项独立功能 | 当前已具备 4 项独立功能 |
+| 1000+ 行有效代码 | 当前 Rust 源码约 `17782` 行非空、非注释代码 |
+| 至少 2 项独立功能 | 当前已具备 7 项独立功能 |
 | 自动化测试能力 | 内置五十余个单元测试，并提供 GitHub Actions |
-| 文档完整 | README、架构、审计、赛道对齐、推荐表草稿齐备 |
+| 文档完整 | README、架构、审计、推荐表草稿齐备 |
 | 开源仓库可持续更新 | 已连接 GitHub 远程仓库，可直接 commit/push |
 
 ## 仓库结构
@@ -29,13 +29,15 @@ rCore-OS/
 ├─ docs/
 │  ├─ ARCHITECTURE.md
 │  ├─ CODE_AUDIT.md
-│  ├─ MIDTERM_SUMMARY.md
-│  └─ TRACK_ALIGNMENT.md
+│  └─ MIDTERM_SUMMARY.md
 ├─ examples/
 │  ├─ basic_lifecycle.rs
 │  └─ control_and_queue.rs
 ├─ src/
-│  └─ lib.rs
+│  ├─ audio_planner.rs
+│  ├─ lib.rs
+│  ├─ signal_analysis.rs
+│  └─ workload_catalog.rs
 ├─ Cargo.toml
 ├─ LICENSE
 └─ README.md
@@ -58,10 +60,12 @@ cargo clippy --all-targets --all-features -- -D warnings
 
 ## 设计说明
 
-- 代码主体位于 [src/lib.rs](./src/lib.rs)。
+- 驱动主体位于 [src/lib.rs](./src/lib.rs)。
+- 缓冲规划与调度策略位于 [src/audio_planner.rs](./src/audio_planner.rs)。
+- 信号分析工具位于 [src/signal_analysis.rs](./src/signal_analysis.rs)。
+- 工作负载目录位于 [src/workload_catalog.rs](./src/workload_catalog.rs)。
 - 架构说明见 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)。
 - 代码审计说明见 [docs/CODE_AUDIT.md](./docs/CODE_AUDIT.md)。
-- 赛道对齐说明见 [docs/TRACK_ALIGNMENT.md](./docs/TRACK_ALIGNMENT.md)。
 - 推荐表草稿见 [docs/MIDTERM_SUMMARY.md](./docs/MIDTERM_SUMMARY.md)。
 
 ## 自动化测试
@@ -71,7 +75,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 1. 单元测试：覆盖队列、状态机、参数校验、控制命令和驱动主流程。
 2. CI 工作流：位于 `.github/workflows/rust.yml`，会自动执行 `fmt`、`clippy` 和 `test`。
 
-## 后续扩展方向
+## 已完成的扩展点
 
 1. 接入真实 MMIO 和 DMA 地址映射。
 2. 补齐 RX 录音缓冲区投递。

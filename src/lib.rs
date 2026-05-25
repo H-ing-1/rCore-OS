@@ -7,6 +7,9 @@
 //! - [`virtqueue`]：底层描述符环 (Descriptor Ring) 读写与中断处理
 //! - [`control`]：控制命令解析、静音/音量/通道映射等高层逻辑
 //! - [`driver`]：驱动主结构体，整合以上两个模块
+//! - [`audio_planner`]：缓冲规划、延迟预算与队列压力评估
+//! - [`signal_analysis`]：音频样本统计、静音检测与增益分析
+//! - [`workload_catalog`]：大规模音频工作负载目录与策略检索
 //! - [`tests`]：针对 PcmStream 状态机与非法操作的完整自动化测试
 
 #![no_std]
@@ -17,6 +20,10 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::fmt;
 use core::sync::atomic::Ordering;
+
+pub mod audio_planner;
+pub mod signal_analysis;
+pub mod workload_catalog;
 
 // ============================================================
 // 第一部分：常量与基础数据结构

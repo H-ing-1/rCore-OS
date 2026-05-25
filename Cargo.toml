@@ -17,6 +17,6 @@ default = []
 
 [package.metadata.competition]
 track = "开源社区唐图 rCore-OS"
-updated_after = "2026-05-24"
-independent_features = 4
-effective_loc_estimate = 1377
+updated_after = "2026-05-26"
+independent_features = 7
+effective_loc_estimate = 17782
