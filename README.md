@@ -75,7 +75,7 @@ cargo clippy --all-targets --all-features -- -D warnings
 1. 单元测试：覆盖队列、状态机、参数校验、控制命令和驱动主流程。
 2. CI 工作流：位于 `.github/workflows/rust.yml`，会自动执行 `fmt`、`clippy` 和 `test`。
 
-## 已完成的扩展点
+## 后续扩展方向
 
 1. 接入真实 MMIO 和 DMA 地址映射。
 2. 补齐 RX 录音缓冲区投递。
